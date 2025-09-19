@@ -5,7 +5,7 @@
 - Sebastian Albarracin Silva
 - Raquel Iveth Selma Ayala
 - Juan Pablo Nieto Cortes
-- Deysi Lorena Gusman
+- Deisy Lorena Guzmán
 
 # Prototipo
 
