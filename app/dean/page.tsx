@@ -192,6 +192,7 @@ export default function DeanDashboard() {
                                 ? "default"
                                 : "secondary"
                           }
+                          className={request.priority === "Alta" ? "bg-[#990000] text-white hover:bg-[#770000]" : ""}
                         >
                           {request.priority}
                         </Badge>

@@ -58,7 +58,22 @@ export default function UsersPage() {
       status: "Inactivo",
     },
   ]
+  /* 
+  const [users, setUsers] = useState([]);
 
+  useEffect(() => {
+    fetch('http://localhost:8080/api/users') // tu endpoint API
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Error al obtener productos');
+        }
+        return response.json();
+      })
+      .then(data => setUsers(data))
+      .catch(error => console.error('Error:', error));
+  }, []); // [] => solo se ejecuta una vez
+  */
+ 
   return (
     <DashboardLayout role="administrator">
       <div className="space-y-6">

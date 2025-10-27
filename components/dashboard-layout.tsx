@@ -85,7 +85,7 @@ export function DashboardLayout({ children, role, userName = "Usuario" }: Dashbo
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#990000] rounded-lg flex items-center justify-center">
                 <span className="text-lg font-bold text-white">S</span>
               </div>
               <span className="text-xl font-bold text-foreground">SIRHA</span>
@@ -106,7 +106,7 @@ export function DashboardLayout({ children, role, userName = "Usuario" }: Dashbo
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-white"
+                      ? "bg-[#990000] text-white hover:bg-[#770000]"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )}
                   onClick={() => setSidebarOpen(false)}
