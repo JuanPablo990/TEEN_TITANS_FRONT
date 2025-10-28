@@ -47,20 +47,13 @@ class ApiService {
       const response: AxiosResponse<T> = await this.axiosInstance.get(endpoint, config);
       return response.data;
     } catch (error: any) {
-      // Manejo de errores de red (backend no disponible, CORS, timeout)
-      if (!error.response) {
-        console.warn(`⚠️ Error de conexión en ${endpoint}:`, error.message);
-        // Retornar array vacío o null para permitir que la app funcione
-        return (endpoint.includes('?') || !endpoint.match(/\/[^/]+$/)) ? [] as T : null as T;
-      }
-      
       // Si es 404, retornar array vacío o null dependiendo del contexto
-      if (error.response.status === 404) {
+      if (error.response?.status === 404) {
         console.log(`ℹ️ No se encontraron datos en ${endpoint}`);
+        // Retornar array vacío para listas, null para objetos individuales
         return (endpoint.includes('?') || !endpoint.match(/\/[^/]+$/)) ? [] as T : null as T;
       }
-      
-      console.error(`❌ Error en GET ${endpoint}:`, error.response?.status, error.message);
+      console.error(`Error en GET ${endpoint}:`, error);
       throw error;
     }
   }
