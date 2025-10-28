@@ -1,3 +1,5 @@
+"use client"
+
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { StatCard } from "@/components/stat-card"
 import { WeeklySchedule } from "@/components/weekly-schedule"
@@ -6,96 +8,192 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, CheckCircle, XCircle, AlertTriangle, Calendar } from "lucide-react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
+import apiService from "@/lib/api-service"
 
 export default function StudentDashboard() {
-  const scheduleBlocks = [
-    {
-      id: "1",
-      day: 0,
-      startHour: 8,
-      endHour: 10,
-      subject: "Cálculo I",
-      group: "A",
-      room: "Aula 201",
-    },
-    {
-      id: "2",
-      day: 1,
-      startHour: 10,
-      endHour: 12,
-      subject: "Física II",
-      group: "B",
-      room: "Lab 103",
-    },
-    {
-      id: "3",
-      day: 2,
-      startHour: 14,
-      endHour: 16,
-      subject: "Programación",
-      group: "C",
-      room: "Aula 305",
-    },
-    {
-      id: "4",
-      day: 3,
-      startHour: 8,
-      endHour: 10,
-      subject: "Cálculo I",
-      group: "A",
-      room: "Aula 201",
-    },
-    {
-      id: "5",
-      day: 4,
-      startHour: 10,
-      endHour: 12,
-      subject: "Álgebra Lineal",
-      group: "D",
-      room: "Aula 102",
-    },
-  ]
+  // Estados
+  const [studentId, setStudentId] = useState<string>("")
+  const [academicSummary, setAcademicSummary] = useState<any>(null)
+  const [scheduleBlocks, setScheduleBlocks] = useState<any[]>([])
+  const [academicAlerts, setAcademicAlerts] = useState<string[]>([])
+  const [courseRecommendations, setCourseRecommendations] = useState<any[]>([])
+  const [enrollmentDeadlines, setEnrollmentDeadlines] = useState<any>(null)
+  const [recentRequests, setRecentRequests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [hasErrors, setHasErrors] = useState(false)
 
-  const recentRequests = [
-    {
-      id: "REQ-045",
-      from: "Física II - Grupo B",
-      to: "Física II - Grupo A",
-      status: "Aprobada",
-      date: "2024-01-10",
-    },
-    {
-      id: "REQ-052",
-      from: "Programación - Grupo C",
-      to: "Programación - Grupo D",
-      status: "Pendiente",
-      date: "2024-01-15",
-    },
-  ]
+  useEffect(() => {
+    // Obtener el ID del estudiante del localStorage o del contexto de autenticación
+    const storedStudentId = localStorage.getItem('userId') || '1' // ID por defecto para pruebas
+    setStudentId(storedStudentId)
+    
+    if (storedStudentId) {
+      fetchStudentData(storedStudentId)
+    }
+  }, [])
 
-  const upcomingClasses = [
-    { subject: "Cálculo I", time: "Hoy, 8:00 AM", room: "Aula 201" },
-    { subject: "Física II", time: "Mañana, 10:00 AM", room: "Lab 103" },
-  ]
+  const fetchStudentData = async (id: string) => {
+    try {
+      setLoading(true)
+      setHasErrors(false)
+      let errorCount = 0
+      
+      // Llamadas individuales con manejo de errores por endpoint
+      try {
+        const summaryRes = await apiService.get(`/api/student-portal/${id}/academic-summary`)
+        setAcademicSummary(summaryRes)
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('ℹ️ No hay datos de resumen académico disponibles')
+        } else {
+          errorCount++
+          console.warn('⚠️ Error al cargar resumen académico:', error.message)
+        }
+        // Datos de fallback
+        setAcademicSummary({
+          studentId: id,
+          studentName: "Estudiante",
+          academicProgram: "Programa Académico",
+          currentSemester: 1,
+          cumulativeGPA: 0.0,
+          completedCredits: 0,
+          totalCreditsRequired: 180,
+          progressPercentage: 0,
+          coursesInProgress: 0,
+          coursesCompleted: 0
+        })
+      }
 
-  const notifications = [
-    {
-      id: "1",
-      type: "success",
-      message: "Tu solicitud REQ-045 ha sido aprobada",
-      date: "Hace 2 horas",
-    },
-    {
-      id: "2",
-      type: "warning",
-      message: "Tu solicitud REQ-052 está en revisión",
-      date: "Hace 1 día",
-    },
-  ]
+      try {
+        const scheduleRes = await apiService.get(`/api/student-portal/${id}/current-schedule`)
+        const formattedSchedule = formatScheduleBlocks(scheduleRes || [])
+        setScheduleBlocks(formattedSchedule)
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('ℹ️ No hay horario disponible')
+          setScheduleBlocks([])
+        } else {
+          errorCount++
+          console.warn('⚠️ Error al cargar horario:', error.message)
+          setScheduleBlocks([])
+        }
+      }
+
+      try {
+        const alertsRes = await apiService.get(`/api/student-portal/${id}/academic-alerts`)
+        setAcademicAlerts(alertsRes?.alerts || [])
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('ℹ️ No hay alertas académicas')
+          setAcademicAlerts([])
+        } else {
+          errorCount++
+          console.warn('⚠️ Error al cargar alertas:', error.message)
+          setAcademicAlerts([])
+        }
+      }
+
+      try {
+        const recommendationsRes = await apiService.get(`/api/student-portal/${id}/course-recommendations`)
+        setCourseRecommendations(recommendationsRes?.slice(0, 3) || [])
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('ℹ️ No hay recomendaciones de cursos')
+          setCourseRecommendations([])
+        } else {
+          errorCount++
+          console.warn('⚠️ Error al cargar recomendaciones:', error.message)
+          setCourseRecommendations([])
+        }
+      }
+
+      try {
+        const deadlinesRes = await apiService.get(`/api/student-portal/enrollment-deadlines`)
+        setEnrollmentDeadlines(deadlinesRes)
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('ℹ️ No hay fechas límite configuradas')
+          setEnrollmentDeadlines(null)
+        } else {
+          errorCount++
+          console.warn('⚠️ Error al cargar fechas límite:', error.message)
+          setEnrollmentDeadlines(null)
+        }
+      }
+
+      if (errorCount > 0) {
+        setHasErrors(true)
+        console.info(`ℹ️ ${errorCount} servicio(s) no disponible(s). Mostrando datos de prueba.`)
+      }
+
+    } catch (error) {
+      console.error('Error general al cargar datos del estudiante:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatScheduleBlocks = (groups: any[]) => {
+    const blocks: any[] = []
+    
+    groups.forEach((group) => {
+      if (group.schedule && group.schedule.length > 0) {
+        group.schedule.forEach((scheduleItem: any, index: number) => {
+          blocks.push({
+            id: `${group.groupId}-${index}`,
+            day: getDayIndex(scheduleItem.dayOfWeek),
+            startHour: parseInt(scheduleItem.startTime?.split(':')[0] || '8'),
+            endHour: parseInt(scheduleItem.endTime?.split(':')[0] || '10'),
+            subject: group.course?.name || 'Materia',
+            group: group.section || 'A',
+            room: scheduleItem.classroom || 'Por asignar',
+          })
+        })
+      }
+    })
+    
+    return blocks
+  }
+
+  const getDayIndex = (dayName: string): number => {
+    const days: { [key: string]: number } = {
+      'MONDAY': 0,
+      'TUESDAY': 1,
+      'WEDNESDAY': 2,
+      'THURSDAY': 3,
+      'FRIDAY': 4,
+      'SATURDAY': 5,
+      'SUNDAY': 6
+    }
+    return days[dayName?.toUpperCase()] || 0
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout role="student" userName="Cargando...">
+        <div className="flex items-center justify-center h-screen">
+          <p className="text-lg">Cargando información...</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
-    <DashboardLayout role="student" userName="Estudiante">
+    <DashboardLayout role="student" userName={academicSummary?.studentName || "Estudiante"}>
       <div className="space-y-6">
+        {hasErrors && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm text-yellow-900">Algunos servicios no están disponibles</p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Se están mostrando datos de ejemplo. Algunos endpoints del backend no están respondiendo.
+              </p>
+            </div>
+          </div>
+        )}
+        
         <div>
           <h1 className="text-3xl font-bold text-foreground">Mi Panel</h1>
           <p className="text-muted-foreground mt-1">Bienvenido a tu espacio académico</p>
@@ -103,30 +201,31 @@ export default function StudentDashboard() {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Solicitudes Pendientes"
-            value="1"
-            icon={<Clock className="h-4 w-4" />}
-            description="En revisión"
-            variant="warning"
-          />
-          <StatCard
-            title="Solicitudes Aprobadas"
-            value="3"
+            title="Créditos Completados"
+            value={academicSummary?.completedCredits?.toString() || "0"}
             icon={<CheckCircle className="h-4 w-4" />}
-            description="Este periodo"
+            description={`de ${academicSummary?.totalCreditsRequired || 0} totales`}
             variant="success"
           />
           <StatCard
-            title="Materias Inscritas"
-            value="5"
+            title="Promedio Acumulado"
+            value={academicSummary?.cumulativeGPA?.toFixed(2) || "0.00"}
+            icon={<AlertTriangle className="h-4 w-4" />}
+            description="GPA actual"
+            variant={academicSummary?.cumulativeGPA >= 3.5 ? "success" : "warning"}
+          />
+          <StatCard
+            title="Semestre Actual"
+            value={`${academicSummary?.currentSemester || 1}`}
             icon={<Calendar className="h-4 w-4" />}
-            description="Semestre actual"
+            description={academicSummary?.academicProgram || "Programa"}
           />
           <StatCard
             title="Avance del Plan"
-            value="68%"
-            icon={<AlertTriangle className="h-4 w-4" />}
+            value={`${academicSummary?.progressPercentage?.toFixed(0) || 0}%`}
+            icon={<Clock className="h-4 w-4" />}
             description="Créditos completados"
+            variant="default"
           />
         </div>
 
@@ -134,30 +233,25 @@ export default function StudentDashboard() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Notificaciones</CardTitle>
+                <CardTitle>Alertas Académicas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        notification.type === "success"
-                          ? "bg-green-50 border-green-200"
-                          : "bg-yellow-50 border-yellow-200"
-                      }`}
-                    >
-                      {notification.type === "success" ? (
-                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{notification.date}</p>
+                  {academicAlerts.length > 0 ? (
+                    academicAlerts.map((alert, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-3 p-3 rounded-lg border bg-warning/10 border-warning/20"
+                      >
+                        <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{alert}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No tienes alertas académicas en este momento.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -166,51 +260,35 @@ export default function StudentDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Mis Solicitudes Recientes</CardTitle>
+                <CardTitle>Cursos Recomendados</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {recentRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-start justify-between p-4 border border-border rounded-lg hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{request.id}</span>
-                          <Badge
-                            variant={
-                              request.status === "Aprobada"
-                                ? "default"
-                                : request.status === "Pendiente"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {request.status}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <p>
-                            <span className="font-medium">De:</span> {request.from}
-                          </p>
-                          <p>
-                            <span className="font-medium">A:</span> {request.to}
-                          </p>
-                          <p>
-                            <span className="font-medium">Fecha:</span> {request.date}
-                          </p>
+                  {courseRecommendations.length > 0 ? (
+                    courseRecommendations.map((course) => (
+                      <div
+                        key={course.courseCode}
+                        className="flex items-start justify-between p-4 border border-border rounded-lg hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{course.courseCode}</span>
+                            <Badge variant="secondary">{course.credits} créditos</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p><span className="font-medium">Nombre:</span> {course.name}</p>
+                            {course.description && <p className="text-xs">{course.description}</p>}
+                          </div>
                         </div>
                       </div>
-                      {request.status === "Aprobada" && <CheckCircle className="h-5 w-5 text-success" />}
-                      {request.status === "Pendiente" && <Clock className="h-5 w-5 text-warning" />}
-                      {request.status === "Rechazada" && <XCircle className="h-5 w-5 text-destructive" />}
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay recomendaciones disponibles en este momento.</p>
+                  )}
                 </div>
-                <Link href="/student/requests">
+                <Link href="/student/curriculum">
                   <Button variant="outline" className="w-full mt-4 bg-transparent">
-                    Ver Todas las Solicitudes
+                    Ver Plan de Estudios
                   </Button>
                 </Link>
               </CardContent>
@@ -220,34 +298,49 @@ export default function StudentDashboard() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Próximas Clases</CardTitle>
+                <CardTitle>Resumen Académico</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {upcomingClasses.map((classItem, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
-                    <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{classItem.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{classItem.time}</p>
-                      <p className="text-xs text-muted-foreground">{classItem.room}</p>
-                    </div>
+                <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Materias en Curso</p>
+                    <p className="text-2xl font-bold mt-1">{academicSummary?.coursesInProgress || 0}</p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Materias Aprobadas</p>
+                    <p className="text-2xl font-bold mt-1">{academicSummary?.coursesCompleted || 0}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Alertas</CardTitle>
+                <CardTitle>Fechas Importantes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-warning/10 rounded-lg border border-warning/20">
-                  <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">Cierre de periodo</p>
-                    <p className="text-xs text-muted-foreground mt-1">El periodo de cambios cierra en 5 días</p>
-                  </div>
-                </div>
+                {enrollmentDeadlines ? (
+                  <>
+                    <div className="flex items-start gap-3 p-3 bg-warning/10 rounded-lg border border-warning/20">
+                      <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">Periodo: {enrollmentDeadlines.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Inicio: {new Date(enrollmentDeadlines.startDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Fin: {new Date(enrollmentDeadlines.endDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No hay fechas límite disponibles.</p>
+                )}
               </CardContent>
             </Card>
 

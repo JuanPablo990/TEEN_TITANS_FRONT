@@ -33,6 +33,7 @@ interface DashboardLayoutProps {
 const navigationByRole: Record<string, NavItem[]> = {
   administrator: [
     { title: "Inicio", href: "/admin", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { title: "Usuarios", href: "/admin/users", icon: <Users className="w-5 h-5" /> },
     { title: "Estudiantes", href: "/admin/students", icon: <Users className="w-5 h-5" /> },
     { title: "Decanos", href: "/admin/deans", icon: <GraduationCap className="w-5 h-5" /> },
     { title: "Profesores", href: "/admin/professors", icon: <Users className="w-5 h-5" /> },

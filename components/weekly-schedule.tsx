@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { Fragment } from "react"
 
 interface ScheduleBlock {
   id: string
@@ -66,9 +67,9 @@ export function WeeklySchedule({ scheduleBlocks, title = "Horario Semanal" }: We
             {/* Schedule grid */}
             <div className="grid grid-cols-8 gap-px bg-border">
               {hours.map((hour) => (
-                <>
+                <Fragment key={`hour-row-${hour}`}>
                   {/* Hour label */}
-                  <div key={`hour-${hour}`} className="bg-card p-3 text-sm text-muted-foreground font-medium">
+                  <div className="bg-card p-3 text-sm text-muted-foreground font-medium">
                     {hour}:00
                   </div>
 
@@ -101,7 +102,7 @@ export function WeeklySchedule({ scheduleBlocks, title = "Horario Semanal" }: We
                       </div>
                     )
                   })}
-                </>
+                </Fragment>
               ))}
             </div>
           </div>
